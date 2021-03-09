@@ -1,4 +1,5 @@
-env/ 
+env/
+screenshots/
 *.png
 *.log
 chromedriver.exe
