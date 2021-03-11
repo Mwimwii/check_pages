@@ -92,7 +92,8 @@ def save_screenshot(driver = webdriver.Chrome, file_name: Path = Path('./img.png
 
 def check_name(file_name: Path, copy: int = 2) -> str:
     import re
-    file_name = Path(re.sub('[\\\\/:*?\"<>|]*', '', str(file_name)))
+    name = re.sub('[\\\\/:*?\"<>|]*', '', file_name.name)
+    file_name = file_name.parent.joinpath(name)
     if file_name.exists():
         file_name = Path(f'{str(file_name)[:-4]}({copy}).PNG')
         if file_name.exists():
