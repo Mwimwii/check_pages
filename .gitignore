@@ -1,0 +1,7 @@
+env/
+screenshots/
+*.png
+*.log
+chromedriver.exe
+geckodriver.exe
+offline_sites.json
