@@ -30,7 +30,7 @@ teams_webhook_url: str = ''
 config = {
     'version' : 1,
     'disable_existing_loggers' : False,
-    'Formatters' : {
+    'formatters' : {
         'teamscard' : {
             '()' : Office365CardFormatter,
             'facts' : ['name', 'levelname', 'lineno'],
@@ -52,7 +52,7 @@ config = {
     },
 }
 logging.config.dictConfig(config)
-log = logging.getLogger(__name__)
+log = logging.getLogger()#.getLogger(__name__)
 log.info('Info level test')
 log.debug('debug level prompt')
 log.warning('Things are serious, warning level test')
@@ -136,14 +136,17 @@ def save_screenshot(driver = webdriver.Chrome, file_name: Path = Path('./img.png
 def check_name(file_name: Path, copy: int = 2) -> str:
     import re
     name = re.sub('[\\\\/:*?\"<>|]*', '', file_name.name)
+    # replace empty names
+    name = name if name else 'Unnamed link'
     file_name = file_name.parent.joinpath(name)
     if file_name.exists():
-        file_name = Path(f'{str(file_name)[:-4]}({copy}).PNG')
+        # TODO: remove the number from braces and do 
+        file_name = Path(f'{str(file_name)[:-4]}({copy}).png')
         if file_name.exists():
             # get the number in the braces, turn it into an int, increment by 1, recurse
             copy = 2# int(str(file_name).split('(')[1][:-5]) + 1
             #copy = int(re.match)
-            file_name = Path(f'{str(file_name)[:-4]}({copy}).PNG')
+            file_name = Path(f'{str(file_name)[:-4]}({copy}).png')
             return check_name(file_name=file_name, copy=copy)
     
     return file_name
@@ -152,19 +155,27 @@ def get_links(path: Path, driver: webdriver.Chrome):
     ignored_exceptions = (NoSuchElementException, StaleElementReferenceException,)
     # get all links in the page by getting anchor tags then their hrefs and text, skiping links to external origins.
     anchors = driver.find_elements_by_tag_name('a')
-    links: List[tuple] = [(x.get_attribute('href'), x.text) for x in anchors if x.get_attribute('href').startswith(hostname)]#if x.text] 
+    # Filter out links with no text in them
+    links: List[tuple] = [(x.get_attribute('href'), x.text) for x in anchors if x.text]
+    # Add links that don't have any text containing couterparts to the list of links
+    el = [x for x in anchors if x not in links]
+    links.append(el)
+    # delete unneeded variables
+    del(el)
+    del(anchors)
     print(f'\n\nLinks:\n\t{links}\n\n')
     # traverse set of anchor tags
-    
     for ref in links:
         if ref[0] is not None:
             # if the link has been visited before, skip to next link (interation)
-            if ref[0] not in visited_pages:
+            if ref[0] in visited_pages:
                 continue
             # skip empty anchor tags
             if ref[0].endswith('#'):
                 continue
             try:
+                pass
+                '''
                 request = requests.head(ref[0], data= {'key', 'value'})
                 # Report all broken links
                 if request.status_code < 200 or request.status_code > 299:
@@ -176,6 +187,7 @@ def get_links(path: Path, driver: webdriver.Chrome):
                             'text': 'Link skipped because it does not have a human readable name.',}
                     log.error(f'Site ')
                     continue
+                '''
             except MissingSchema:
                 broken_links[ref[0]] = {'status': request.status_code, \
                         'reason': 'Mising Schema Exception', \
@@ -187,9 +199,10 @@ def get_links(path: Path, driver: webdriver.Chrome):
             except Exception as e:
                 log.error(f'Exception: {e}', exc_info = True)
                 pass
-            name = ref[0].split('/')[-1]
-            # photo_name: Path = path.joinpath(f'{name}.png')
-            photo_name: Path = path.joinpath(f'link name: {ref[1]}.png')
+            # If the link has a name use it for the file name, otherwise use the final pathname
+            name = ref[1] if ref[1] else ref[0].split('/')[-1]
+            photo_name: Path = path.joinpath(f'{name}.png')
+            # photo_name: Path = path.joinpath(f'link name: {name}.png')
             save_screenshot(driver=driver, file_name=photo_name, url= ref[0], include_scrollbar= False)
             # Recursivel  y traverse the site for all anchor tags leading to a link
             #get_links(path=path, driver=driver)
@@ -217,9 +230,11 @@ def check_sites(driver: webdriver.Chrome, sites: List[str], path: Path):
         except Exception as e:
             print(f"Failed to get site: {site} \n\t{e}")
             # TODO: log the error properly here
+            msg = f'Error occured tying to get site {site}. more info:\n\t{e}'
+            log.error(msg=msg, exc_info=True)
             # log.error()
             offline_sites.append(site)
-            raise e
+            # raise e
     driver.close()
     # Save the offline sites in a json file
     if offline_sites:
