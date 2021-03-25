@@ -139,16 +139,12 @@ def check_name(file_name: Path, copy: int = 2) -> str:
     # replace empty names
     name = name if name else 'Unnamed link'
     file_name = file_name.parent.joinpath(name)
-    if file_name.exists():
-        # TODO: remove the number from braces and do 
-        file_name = Path(f'{str(file_name)[:-4]}({copy}).png')
-        if file_name.exists():
-            # get the number in the braces, turn it into an int, increment by 1, recurse
-            copy = 2# int(str(file_name).split('(')[1][:-5]) + 1
-            #copy = int(re.match)
-            file_name = Path(f'{str(file_name)[:-4]}({copy}).png')
-            return check_name(file_name=file_name, copy=copy)
-    
+    # remove the file extension
+    name = name.replace('.png', '')
+    # increment the coy number by one
+    while file_name.is_file():
+        file_name = file_name.parent.joinpath(f'{name} ({copy}).png')
+        copy += 1    
     return file_name
 
 def get_links(path: Path, driver: webdriver.Chrome):
@@ -158,7 +154,7 @@ def get_links(path: Path, driver: webdriver.Chrome):
     # Filter out links with no text in them
     links: List[tuple] = [(x.get_attribute('href'), x.text) for x in anchors if x.text]
     # Add links that don't have any text containing couterparts to the list of links
-    el = [x for x in anchors if x not in links]
+    el = [x.get_attribute('href') for x in anchors if x.get_attribute('href') not in links]
     links.append(el)
     # delete unneeded variables
     del(el)
