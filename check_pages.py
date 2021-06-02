@@ -70,21 +70,24 @@ visited_pages: Set[str] = set()
 broken_links: dict = {}
 hostname: str = ''
 
-def init():
+def init(websites: List[str] = None):
+
+    targets = websites if websites is not None else sites
 
     # make a folder for the screenshots
     screenshots: Path = make_dir(os.getcwd(), "screenshots")
 
+    # Open chrome without a window and certificate validation
     options = Options()
     options.add_argument('--headless')
+    options.add_argument('--allow-running-insecure-content')
+    options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(options = options)
-
-
     # Make a new folder with todays date - year (%Y), month(%m), and day(%d)
     today = (datetime.datetime.now().strftime("%Y%m%d"))
     todays_photos: Path = make_dir(screenshots, name=today)        
-    check_sites(driver = driver, sites=sites[:2], path=todays_photos)
+    check_sites(driver = driver, sites=targets[:2], path=todays_photos)
 
 def make_dir(parent: str, name: str) -> Path:
     '''
@@ -101,10 +104,6 @@ def make_dir(parent: str, name: str) -> Path:
         log.critical(f"Fatal Error, cannot create folder named {name}: \n\t{e}")
         os.close()
     return dir
-
-    
-
-
 
 def save_screenshot(driver = webdriver.Chrome, file_name: Path = Path('./img.png'), url: str = 'http://sh.gov.zm', include_scrollbar: bool = True) -> None:
     '''
@@ -170,8 +169,6 @@ def get_links(path: Path, driver: webdriver.Chrome):
             if ref[0].endswith('#'):
                 continue
             try:
-                pass
-                '''
                 request = requests.head(ref[0], data= {'key', 'value'})
                 # Report all broken links
                 if request.status_code < 200 or request.status_code > 299:
@@ -183,7 +180,6 @@ def get_links(path: Path, driver: webdriver.Chrome):
                             'text': 'Link skipped because it does not have a human readable name.',}
                     log.error(f'Site ')
                     continue
-                '''
             except MissingSchema:
                 broken_links[ref[0]] = {'status': request.status_code, \
                         'reason': 'Mising Schema Exception', \
@@ -203,8 +199,6 @@ def get_links(path: Path, driver: webdriver.Chrome):
             # Recursivel  y traverse the site for all anchor tags leading to a link
             #get_links(path=path, driver=driver)
     
-             
-
 def check_site(url: str, path: Path, driver: webdriver.Chrome):
     hostname = urlparse(url).hostname
     dir: Path = make_dir(parent=path, name=hostname)
@@ -212,9 +206,6 @@ def check_site(url: str, path: Path, driver: webdriver.Chrome):
     save_screenshot(driver=driver, file_name= home_pic, url=url, include_scrollbar=False)
     get_links(path=dir, driver=driver)
     
-
-
-
 def check_sites(driver: webdriver.Chrome, sites: List[str], path: Path):
     # Go through the list of sites
     for site in sites:
